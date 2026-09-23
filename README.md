@@ -1,49 +1,48 @@
 # Fev
 
-**F**ranco's **ev**aluator. Jev is TypeSafe's typed-decision judge; Kev is the
-open-source replica you can train yourself; Fev is mine — the judge, running
-on my machines, no HuggingFace required.
+[Kev](https://github.com/jaredpalmer/kev), without the Hub: the
+`jaredpalmer/kev-0.5b` checkpoint exactly as shipped on HuggingFace, plus its
+`Qwen/Qwen2.5-0.5B` base model, packed as split git parts so it can be
+cloned and served on machines with **no HuggingFace access**. Download once
+where the Hub works; `git clone` anywhere.
 
-Today Fev ships the Kev-0.5b checkpoint (github.com/jaredpalmer/kev,
-Apache-2.0) plus its Qwen2.5-0.5B base (Apache-2.0) as split git parts —
-download once where the Hub works, `git clone` anywhere. Verified end to end
-on a 16GB MacBook Air: rebuild from parts, re-patch, serve fully offline
-(`HF_HUB_OFFLINE=1`, empty cache), ~20ms per judgment warm, ~0.1GB resident.
+Both works are Apache-2.0 (see `LICENSE` and `NOTICE`); the checkpoint is
+unmodified except that `unpack.sh` re-points its base-model reference at the
+local copy.
 
-The roadmap is the reason this repo exists apart from upstream: an
-**NFL-tuned judge** trained on claudeprophet-nfl's labelled record — move
-triggers (12-3 designation vs 0-2 interpretive), grounding pairs, evidence
-materiality — a checkpoint of my own in the same shape upstream releases
-theirs.
+## Use
 
-## Run it on an offline machine
+On any machine (needs the kev repo and its deps, from GitHub/PyPI):
 
 ```sh
 git clone https://github.com/jaredpalmer/kev.git ~/kev && cd ~/kev && uv sync --extra serve
-git clone git@github.com:francohtlin/fev.git && cd fev && ./unpack.sh
+git clone https://github.com/francohtlin/fev.git && cd fev && ./unpack.sh
 cd ~/kev && HF_HUB_OFFLINE=1 uv run --extra serve python -m kev.serve --run "$OLDPWD/bundle/checkpoint" --port 8009
 ```
 
-(kev's code and deps come from GitHub/PyPI, not the Hub; vendor them the same
-way if those are blocked too.)
-
-Point any System One client at it — e.g. claudeprophet-nfl:
+Then talk to it like any System One server:
 
 ```sh
-JEV_API_URL=http://127.0.0.1:8009/v1/systemone
+curl -s http://127.0.0.1:8009/v1/systemone -X POST \
+  -H "Content-Type: application/json" -H "Authorization: Bearer x" \
+  -d '{"model":"kev","state":{"text":"..."},"questions":{"q":{"type":"noul","instructions":"...","criteria":{"true":"...","false":"..."}}}}'
 ```
 
-## What this judge is for, measured
-
-On claudeprophet-nfl's benchmark suites, kev-0.5b: **trigger gate 9/11**
-(both misses near-threshold false blocks — conservative in the safe
-direction), grounding 3/7 (a 0.5B backbone cannot read long evidence),
-forecasting below the coin-flip floor. A judge, never a forecaster.
+Verified end to end on a 16GB MacBook Air (Apple Silicon, MPS): checksums,
+rebuild from parts, re-patch, and serve with `HF_HUB_OFFLINE=1` against an
+empty HuggingFace cache. ~20ms per judgment warm, ~0.1GB resident.
 
 ## Layout
 
 | Path | What |
 | --- | --- |
-| `parts/` | The bundle as ~95MB split parts + SHA256 manifest |
-| `unpack.sh` | Verify, rebuild `bundle/`, re-patch the base path for this machine |
-| `patch_base.py` | The re-patcher (the base reference lives inside `head.pt`) |
+| `parts/` | The bundle as ~95MB split parts + `SHA256SUMS` |
+| `unpack.sh` | Verify checksums, rebuild `bundle/`, re-patch the base path for this machine |
+| `patch_base.py` | The re-patcher (the base-model reference lives inside `head.pt`) |
+
+## Why the re-patch
+
+The checkpoint's base-model name is stored inside `head.pt`'s metadata (and
+`adapter_config.json`) as `Qwen/Qwen2.5-0.5B`, which the loader resolves via
+the Hub. `unpack.sh` rewrites both to the absolute path of the bundled base,
+so nothing ever asks huggingface.co for anything.
