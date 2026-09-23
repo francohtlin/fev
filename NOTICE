@@ -1,0 +1,10 @@
+Fev redistributes, unmodified except for a local base-model path, the
+following Apache-2.0 licensed works:
+
+- Kev-0.5b checkpoint (LoRA adapter, pointer head, tokenizer files)
+  Copyright Jared Palmer -- https://github.com/jaredpalmer/kev
+- Qwen2.5-0.5B base model weights
+  Copyright Alibaba Cloud / Qwen team -- https://huggingface.co/Qwen/Qwen2.5-0.5B
+
+Both are provided under the Apache License 2.0 (see LICENSE). The packing
+scripts (unpack.sh, patch_base.py) are also Apache-2.0.
